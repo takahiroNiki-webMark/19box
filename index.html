@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05050a">
+<style>
+  :root { --accent: #00e2fb; --bg: #05050a; --red: #cf00ff; }
+  
+  /* bodyをFlexboxにして画面中央寄せに固定 */
+  body { 
+    margin: 0; 
+    background: var(--bg); 
+    overflow: hidden; 
+    font-family: 'Courier New', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+
+  /* 画面全体を包み込む「環境光」の呼吸アニメーション */
+  body::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at center, rgba(0, 242, 255, 0.05) 0%, transparent 70%);
+    pointer-events: none; z-index: 1;
+    animation: globalBreathe 4s infinite ease-in-out;
+  }
+  @keyframes globalBreathe {
+    0%, 100% { opacity: 0.3; filter: hue-rotate(0deg); }
+    50% { opacity: 1; filter: hue-rotate(15deg); }
+  }
+
+  /* 背景用コンテナ：オーラ・波動粒子 */
+  #bg-container { position: absolute; width: 100vw; height: 100vh; overflow: hidden; z-index: 0; }
+  .aura {
+    position: absolute; 
+    width: 150px; height: 150px; 
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 34, 255, 0.25) 0%, rgba(251, 255, 0, 0.08) 40%, transparent 70%);
+    transition: transform 0.4s ease-out, opacity 0.4s ease-out;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+
+  /* パネル全体を呼吸（パルス発光）させる */
+  @keyframes panelBreathe {
+    0%, 100% { filter: drop-shadow(0 0 5px rgba(0, 242, 255, 0.2)); opacity: 0.85; }
+    50% { filter: drop-shadow(0 0 25px rgba(0, 242, 255, 0.6)); opacity: 1; }
+  }
+
+  /* グリッドレイアウトのサイズ固定と中央配置 */
+  .grid {
+    display: grid; 
+    grid-template-columns: repeat(4, 1fr); 
+    grid-template-rows: repeat(4, 1fr);
+    gap: 16px;
+    width: min(92vw, 1200px);
+    height: min(88vh, 750px);
+    padding: 20px; 
+    position: relative; 
+    z-index: 10;
+    animation: panelBreathe 4s infinite ease-in-out;
+    box-sizing: border-box;
+  }
+
+  /* パッド共通 */
+  .cell { display: flex; flex-direction: column; gap: 16px; height: 100%; }
+  
+  @keyframes buttonBreathe {
+    0%, 100% { box-shadow: inset 0 0 15px rgba(0, 242, 255, 0.15), 0 0 10px rgba(0, 242, 255, 0.15); transform: scale(0.99); }
+    50% { box-shadow: inset 0 0 30px rgba(0, 242, 255, 0.45), 0 0 20px rgba(0, 242, 255, 0.4); transform: scale(1); }
+  }
+
+  .pad, .control-btn {
+    background: linear-gradient(135deg, rgba(0, 242, 255, 0.15), rgba(5, 5, 10, 0.6));
+    border: 1px solid var(--accent);
+    backdrop-filter: blur(8px);
+    display: flex; justify-content: center; align-items: center;
+    cursor: pointer; position: relative; color: var(--accent);
+    text-shadow: 0 0 10px var(--accent); opacity: 0.9; overflow: hidden;
+    height: 100%;
+    box-sizing: border-box;
+    animation: buttonBreathe 4s infinite ease-in-out;
+    transition: all 0.3s ease;
+    
+    /* ジャケット画像用の背景スタイル */
+    background-size: cover;
+    background-position: center;
+    background-blend-mode: overlay;
+    z-index: 1;
+  }
+
+  .pad:hover {
+    background-blend-mode: hard-light;
+    filter: brightness(1.25);
+  }
+
+  /* 二重フレーム用の内枠 */
+  .pad::before, .control-btn::before {
+    content: ''; position: absolute; inset: 4px;
+    border: 1px solid rgba(0, 242, 255, 0.25); pointer-events: none;
+    box-shadow: inset 0 0 10px rgba(0, 242, 255, 0.1);
+    z-index: 2;
+  }
+
+  /* 四隅だけ赤く光る装飾 */
+  .pad::after, .control-btn::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: 
+      radial-gradient(circle at top left, var(--red) 0%, transparent 15px),
+      radial-gradient(circle at top right, var(--red) 0%, transparent 15px),
+      radial-gradient(circle at bottom left, var(--red) 0%, transparent 15px),
+      radial-gradient(circle at bottom right, var(--red) 0%, transparent 15px);
+    opacity: 0.7;
+    mix-blend-mode: screen;
+    z-index: 2;
+  }
+
+  /* パッド内タイトル表示 */
+  .track-title {
+    position: relative; z-index: 3;
+    padding: 0 10px; text-align: center;
+    word-break: break-all; font-size: 0.8rem;
+    pointer-events: none;
+  }
+
+  /* 走る波線 */
+  .wave { position: absolute; width: 100%; height: 0.1px; background: var(--accent); top: 40%; opacity: 0.3; animation: waveMove 3s linear infinite; pointer-events: none; z-index: 2; }
+  .wave2 { position: absolute; width: 100%; height: 0.1px; background: var(--accent); top: 60%; opacity: 0.3; animation: waveMove 2s linear infinite; pointer-events: none; z-index: 2; }
+  @keyframes waveMove { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+
+  /* クリック時に広がる波紋エフェクト */
+  .ripple {
+    position: absolute; border: 2px solid var(--accent); border-radius: 50%;
+    transform: translate(-50%, -50%); pointer-events: none; z-index: 4;
+    animation: rippleEffect 0.6s ease-out forwards;
+  }
+  @keyframes rippleEffect {
+    0% { width: 0; height: 0; opacity: 1; }
+    100% { width: 300px; height: 300px; opacity: 0; }
+  }
+
+  /* 再生中（回転アニメーション＆動的重ね順） */
+  .playing { 
+    animation: spin 60s linear infinite !important; 
+    border-radius: 50%; 
+    border-color: var(--red);
+    box-shadow: inset 0 0 20px var(--red), 0 0 15px var(--red) !important;
+  }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+
+  /* コントロールボタン用の均等分割設定 */
+  .control-btn { 
+    flex: 1;
+    border-color: var(--red); color: var(--red); text-shadow: 0 0 10px var(--red); 
+    background: linear-gradient(135deg, rgba(0, 225, 255, 0.15), rgba(5, 5, 10, 0.6));
+    animation: controlBreathe 4s infinite ease-in-out;
+  }
+  .control-btn::before { border-color: rgba(0, 162, 255, 0.25); }
+  @keyframes controlBreathe {
+    0%, 100% { box-shadow: inset 0 0 15px rgba(0, 255, 234, 0.2), 0 0 10px rgba(2, 255, 166, 0.2); transform: scale(0.99); }
+    50% { box-shadow: inset 0 0 25px rgba(6, 178, 236, 0.4), 0 0 20px rgba(0, 42, 255, 0.5); transform: scale(1); }
+  }
+  .control-btn .ripple { border-color: var(--red); }
+
+  /* 走査線オーバーレイ */
+  body::after {
+    content: " "; position: absolute; inset: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+    background-size: 100% 4px;
+    z-index: 99; pointer-events: none; opacity: 0.6;
+  }
+
+  /* =========================================================
+     外周HUD装飾
+     - 既存の.grid/.pad/.control-btnのサイズ・配置は変更しない
+     - pointer-events:none で操作を完全に邪魔しない
+     ========================================================= */
+  #outer-hud {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    overflow: hidden;
+    opacity: 0.72;
+  }
+
+  .hud-corner {
+    position: absolute;
+    width: clamp(70px, 7vw, 150px);
+    height: clamp(70px, 7vw, 150px);
+    opacity: 0.72;
+    filter: drop-shadow(0 0 7px rgba(0,242,255,0.22));
+  }
+
+  .hud-corner::before,
+  .hud-corner::after {
+    content: '';
+    position: absolute;
+    background: var(--accent);
+    box-shadow: 0 0 7px rgba(0,242,255,0.45);
+  }
+
+  .hud-corner::before { width: 100%; height: 1px; }
+  .hud-corner::after { width: 1px; height: 100%; }
+
+  .hud-tl { top: 24px; left: 24px; }
+  .hud-tr { top: 24px; right: 24px; transform: scaleX(-1); }
+  .hud-bl { bottom: 24px; left: 24px; transform: scaleY(-1); }
+  .hud-br { bottom: 24px; right: 24px; transform: scale(-1); }
+
+  .hud-corner {
+    background:
+      linear-gradient(135deg, transparent 0 67%, rgba(0,242,255,0.14) 67% 68%, transparent 68%),
+      linear-gradient(135deg, transparent 0 83%, rgba(207,0,255,0.18) 83% 84%, transparent 84%);
+  }
+
+  .hud-line {
+    position: absolute;
+    opacity: 0.32;
+    background: linear-gradient(90deg, transparent, rgba(0,242,255,0.55), transparent);
+    box-shadow: 0 0 8px rgba(0,242,255,0.18);
+  }
+
+  .hud-top, .hud-bottom {
+    left: 14%;
+    right: 14%;
+    height: 1px;
+  }
+
+  .hud-top { top: 24px; }
+  .hud-bottom { bottom: 24px; }
+
+  .hud-left, .hud-right {
+    top: 14%;
+    bottom: 14%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(0,242,255,0.55), transparent);
+  }
+
+  .hud-left { left: 24px; }
+  .hud-right { right: 24px; }
+
+  .hud-label {
+    position: absolute;
+    color: rgba(0,242,255,0.55);
+    font: 10px/1 'Courier New', monospace;
+    letter-spacing: 0.18em;
+    text-shadow: 0 0 8px rgba(0,242,255,0.35);
+    white-space: nowrap;
+  }
+
+  .hud-label-tl { top: 40px; left: 42px; }
+  .hud-label-tr { top: 40px; right: 42px; color: rgba(207,0,255,0.55); }
+  .hud-label-bl { bottom: 40px; left: 42px; }
+  .hud-label-br { bottom: 40px; right: 42px; color: rgba(207,0,255,0.55); }
+
+  .hud-orbit {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(82vw, 1450px);
+    height: min(82vw, 1450px);
+    border: 1px solid rgba(0,242,255,0.055);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .hud-orbit-a {
+    animation: hudOrbit 32s linear infinite;
+  }
+
+  .hud-orbit-b {
+    width: min(66vw, 1150px);
+    height: min(66vw, 1150px);
+    border-color: rgba(207,0,255,0.04);
+    animation: hudOrbitReverse 46s linear infinite;
+  }
+
+  @keyframes hudOrbit {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  @keyframes hudOrbitReverse {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(-360deg); }
+  }
+
+  .hud-ticks {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(54vw, 900px);
+    height: 6px;
+    opacity: 0.28;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(0,242,255,0.65) 0 1px,
+      transparent 1px 18px
+    );
+  }
+
+  .hud-ticks-top { top: 18px; }
+  .hud-ticks-bottom { bottom: 18px; }
+
+  /* タッチ端末では装飾を少し整理。操作・本体表示はそのまま */
+  @media (max-width: 700px), (pointer: coarse) {
+    #outer-hud { opacity: 0.38; }
+    .hud-orbit { opacity: 0.45; }
+    .hud-label { font-size: 8px; }
+    .hud-label-tl { left: 28px; }
+    .hud-label-tr { right: 28px; }
+    .hud-label-bl { left: 28px; }
+    .hud-label-br { right: 28px; }
+  }
+
+  /* Android/PWAの可視領域対策。従来値を優先し、対応ブラウザだけdvhを使用 */
+  @supports (height: 100dvh) {
+    body { min-height: 100dvh; }
+    #bg-container { height: 100dvh; }
+  }
+
+  /* PWA/スマホのノッチ・ホームバー領域に干渉しない */
+  @supports (padding: env(safe-area-inset-top)) {
+    body {
+      padding:
+        env(safe-area-inset-top)
+        env(safe-area-inset-right)
+        env(safe-area-inset-bottom)
+        env(safe-area-inset-left);
+    }
+  }
+
+  /* Android等でホールド時の選択や長押しによる意図しない挙動を抑制 */
+  .pad, .control-btn {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+</style>
+</head>
+<body>
+
+<div id="bg-container"></div>
+
+<!-- PCフルスクリーン時の外周HUD。既存パネル・機能には干渉しない装飾レイヤー -->
+<div id="outer-hud" aria-hidden="true">
+  <div class="hud-corner hud-tl"></div>
+  <div class="hud-corner hud-tr"></div>
+  <div class="hud-corner hud-bl"></div>
+  <div class="hud-corner hud-br"></div>
+  <div class="hud-line hud-top"></div>
+  <div class="hud-line hud-bottom"></div>
+  <div class="hud-line hud-left"></div>
+  <div class="hud-line hud-right"></div>
+  <div class="hud-orbit hud-orbit-a"></div>
+  <div class="hud-orbit hud-orbit-b"></div>
+  <div class="hud-label hud-label-tl">SELECT A FOLDER WITH MATCHING MP3 + JPG FILES.</div>
+  <div class="hud-label hud-label-tr">◈ 15ch JUKEBOX SAMPLER Ver.1.9.0</div>
+  <div class="hud-label hud-label-bl">◈ 15ch JUKEBOX SAMPLER Ver.1.9.0</div>
+  <div class="hud-label hud-label-br">SELECT A FOLDER WITH MATCHING MP3 + JPG FILES.</div>
+  <div class="hud-ticks hud-ticks-top"></div>
+  <div class="hud-ticks hud-ticks-bottom"></div>
+</div>
+
+<div class="grid" id="sampler"></div>
+
+<!-- フォールバック用(古いブラウザ向け)の隠しinput -->
+<input type="file" id="folder-input" webkitdirectory directory multiple accept="audio/*,image/*" style="display: none;">
+
+<script>
+  // 背景アニメーション
+  const container = document.getElementById('bg-container');
+  const auras = [];
+  const totalAuras = 25;
+
+  for(let i=0; i<totalAuras; i++){
+    const a = document.createElement('div');
+    a.className = 'aura';
+    a.x = Math.random() * window.innerWidth;
+    a.y = Math.random() * window.innerHeight;
+    a.vx = (Math.random() - 0.5) * 1.5;
+    a.vy = (Math.random() - 0.5) * 1.5;
+    a.baseScale = 0.6 + Math.random() * 0.8; 
+    container.appendChild(a);
+    auras.push(a);
+  }
+
+  let mouse = { x: window.innerWidth/2, y: window.innerHeight/2 };
+  window.onmousemove = e => { mouse.x = e.clientX; mouse.y = e.clientY; };
+  // タッチ端末ではマウス追従処理を無理に発生させない
+  if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+    mouse.x = window.innerWidth / 2;
+    mouse.y = window.innerHeight / 2;
+  }
+
+  function animate() {
+    auras.forEach((a, index) => {
+      let dx = mouse.x - a.x;
+      let dy = mouse.y - a.y;
+      let dist = Math.sqrt(dx*dx + dy*dy);
+      
+      if(dist < 350) { 
+        a.x += dx * 0.015; 
+        a.y += dy * 0.015; 
+      } else { 
+        a.x += a.vx + Math.sin(Date.now()/1000 + index)*0.2; 
+        a.y += a.vy + Math.cos(Date.now()/1000 + index)*0.2; 
+      }
+      
+      if(a.x < -100 || a.x > window.innerWidth + 100) a.vx *= -1;
+      if(a.y < -100 || a.y > window.innerHeight + 100) a.vy *= -1;
+      
+      a.style.left = (a.x - 75) + 'px';
+      a.style.top = (a.y - 75) + 'px';
+      
+      let breatheFactor = Math.sin(Date.now() / 636); 
+      let currentScale = a.baseScale * (1 + breatheFactor * 0.3);
+      if(dist < 200) currentScale *= 1.2;
+
+      a.style.transform = `scale(${currentScale})`;
+      a.style.opacity = 0.2 + (breatheFactor + 1) * 0.25; 
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  // 画面回転・PWAの表示領域変更時に背景の基準位置だけ更新
+  window.addEventListener('resize', () => {
+    mouse.x = Math.min(mouse.x, window.innerWidth);
+    mouse.y = Math.min(mouse.y, window.innerHeight);
+  }, { passive: true });
+
+  function createRipple(e, element) {
+    const rect = element.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const ripple = document.createElement('div');
+    ripple.className = 'ripple';
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    
+    element.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+  }
+
+  // --- サンプラーパッド＆コントロール初期化 ---
+  const sampler = document.getElementById('sampler');
+  const padElements = [];
+
+  for(let i=0; i<15; i++) {
+    const div = document.createElement('div');
+    div.className = 'pad';
+    
+    const title = document.createElement('span');
+    title.className = 'track-title';
+    title.innerText = '◈nodata◈';
+    div.appendChild(title);
+
+    const wave = document.createElement('div'); wave.className = 'wave'; div.appendChild(wave);
+    const wave2 = document.createElement('div'); wave2.className = 'wave2'; div.appendChild(wave2);
+
+    div.addEventListener('click', function(e) {
+      createRipple(e, this);
+      togglePlay(this);
+    });
+
+    sampler.appendChild(div);
+    padElements.push(div);
+  }
+
+  // 16番目のセル（コントロールボタン2つ）
+  const controlCell = document.createElement('div');
+  controlCell.className = 'cell';
+  
+  const fsBtn = document.createElement('div');
+  fsBtn.className = 'control-btn';
+  fsBtn.innerHTML = 'full//esc';
+  fsBtn.addEventListener('click', function(e) {
+    createRipple(e, this);
+    document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  });
+
+  const loadBtn = document.createElement('div');
+  loadBtn.className = 'control-btn';
+  loadBtn.innerHTML = '▣select';
+
+  controlCell.appendChild(fsBtn);
+  controlCell.appendChild(loadBtn);
+  sampler.appendChild(controlCell);
+
+  // --- 音声再生エンジン & 重ね順（z-index）の動的制御 ---
+  const audioMap = new Map();
+  let currentZIndex = 50; // 再生開始時のベース重なり順
+
+  function togglePlay(pad) {
+    if (!pad.dataset.audioUrl) return;
+
+    let audio = audioMap.get(pad);
+
+    if (!audio) {
+      audio = new Audio(pad.dataset.audioUrl);
+      audioMap.set(pad, audio);
+
+      audio.addEventListener('ended', () => {
+        pad.classList.remove('playing');
+        pad.style.zIndex = '1'; // 停止したら標準の重なり順に戻す
+      });
+    }
+
+    if (audio.paused) {
+      audio.play().catch(err => console.log("再生エラー:", err));
+      pad.classList.add('playing');
+      
+      // ★後から再生されたボタンほど高いz-indexを割り当てて最前面にする
+      currentZIndex++;
+      pad.style.zIndex = currentZIndex;
+    } else {
+      audio.pause();
+      pad.classList.remove('playing');
+      pad.style.zIndex = '1'; // 停止したら標準に戻す
+    }
+  }
+
+  function stopAllAudio() {
+    audioMap.forEach((audio, pad) => {
+      audio.pause();
+      audio.currentTime = 0;
+      pad.classList.remove('playing');
+      pad.style.zIndex = '1';
+    });
+    audioMap.clear();
+  }
+
+  // --- フォルダ選択 & ランダムダイナミック配置処理 ---
+  const folderInput = document.getElementById('folder-input');
+  let currentObjectUrls = [];
+
+  loadBtn.addEventListener('click', async function(e) {
+    createRipple(e, this);
+
+    const canUseDirectoryPicker =
+      'showDirectoryPicker' in window &&
+      !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
+    if (canUseDirectoryPicker) {
+      try {
+        const dirHandle = await window.showDirectoryPicker();
+        const files = [];
+        
+        async function readDirectory(handle) {
+          for await (const entry of handle.values()) {
+            if (entry.kind === 'file') {
+              const file = await entry.getFile();
+              files.push(file);
+            } else if (entry.kind === 'directory') {
+              await readDirectory(entry);
+            }
+          }
+        }
+        
+        await readDirectory(dirHandle);
+        processFiles(files);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error("フォルダ読み込みエラー:", err);
+        }
+      }
+    } else {
+      folderInput.click();
+    }
+  });
+
+  folderInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    processFiles(files);
+  });
+
+  function processFiles(files) {
+    if (!files || files.length === 0) return;
+
+    stopAllAudio();
+    currentObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    currentObjectUrls = [];
+
+    const audioFileMap = new Map();
+    const imageFileMap = new Map();
+
+    files.forEach(file => {
+      const lastDot = file.name.lastIndexOf('.');
+      if (lastDot === -1) return;
+
+      const ext = file.name.substring(lastDot + 1).toLowerCase();
+      const baseName = file.name.substring(0, lastDot);
+
+      if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) {
+        audioFileMap.set(baseName, file);
+      } else if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
+        imageFileMap.set(baseName, file);
+      }
+    });
+
+    const playlist = [];
+    audioFileMap.forEach((audioFile, baseName) => {
+      const imgFile = imageFileMap.get(baseName);
+      
+      const audioUrl = URL.createObjectURL(audioFile);
+      const imageUrl = imgFile ? URL.createObjectURL(imgFile) : null;
+
+      currentObjectUrls.push(audioUrl);
+      if (imageUrl) currentObjectUrls.push(imageUrl);
+
+      playlist.push({
+        title: baseName,
+        audioUrl: audioUrl,
+        imageUrl: imageUrl
+      });
+    });
+
+    if (playlist.length === 0) {
+      alert('対応する音声ファイル(MP3等)が見つかりませんでした。');
+      return;
+    }
+
+    // トラックリストのシャッフル
+    for (let i = playlist.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [playlist[i], playlist[j]] = [playlist[j], playlist[i]];
+    }
+
+    // パッド位置(0~14)のシャッフル
+    const padIndices = Array.from({length: 15}, (_, i) => i);
+    for (let i = padIndices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [padIndices[i], padIndices[j]] = [padIndices[j], padIndices[i]];
+    }
+
+    // 一旦全パッドをクリア
+    padElements.forEach(pad => {
+      delete pad.dataset.audioUrl;
+      pad.querySelector('.track-title').innerText = '◈nodata◈';
+      pad.style.backgroundImage = 'linear-gradient(135deg, rgba(0, 242, 255, 0.15), rgba(5, 5, 10, 0.6))';
+      pad.style.zIndex = '1';
+    });
+
+    // シャッフル配置
+    const count = Math.min(playlist.length, 15);
+    for (let i = 0; i < count; i++) {
+      const padIndex = padIndices[i];
+      const pad = padElements[padIndex];
+      const track = playlist[i];
+      const titleEl = pad.querySelector('.track-title');
+
+      pad.dataset.audioUrl = track.audioUrl;
+      titleEl.innerText = track.title;
+
+      if (track.imageUrl) {
+        pad.style.backgroundImage = `linear-gradient(135deg, rgba(0, 242, 255, 0.2), rgba(5, 5, 10, 0.7)), url("${track.imageUrl}")`;
+      } else {
+        pad.style.backgroundImage = 'linear-gradient(135deg, rgba(0, 242, 255, 0.15), rgba(5, 5, 10, 0.6))';
+      }
+    }
+  }
+</script>
+
+</body>
+</html>
